@@ -1,0 +1,1527 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>InvisiCatch</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a1a;color:#fff;font-family:'Segoe UI',Tahoma,sans-serif;overflow:hidden;height:100vh;user-select:none}
+.screen{display:none;position:fixed;inset:0;align-items:center;justify-content:center;z-index:10;flex-direction:column}
+.screen.active{display:flex}
+.container{background:rgba(15,15,35,0.95);border:2px solid rgba(0,210,211,0.3);border-radius:20px;padding:40px 50px;text-align:center;max-width:500px;width:90%;backdrop-filter:blur(10px);box-shadow:0 0 40px rgba(0,210,211,0.1)}
+.title{font-size:3em;font-weight:900;letter-spacing:4px;margin-bottom:5px;text-shadow:0 0 20px rgba(0,210,211,0.3)}
+.accent{color:#00d2d3}
+.subtitle{color:#888;margin-bottom:30px;font-size:0.95em}
+input[type="text"]{width:100%;padding:12px 16px;background:rgba(255,255,255,0.08);border:2px solid rgba(255,255,255,0.15);border-radius:10px;color:#fff;font-size:1em;outline:none;transition:border-color .3s;margin-bottom:12px}
+input[type="text"]:focus{border-color:#00d2d3}
+input[type="text"]::placeholder{color:rgba(255,255,255,0.3)}
+.btn{width:100%;padding:14px;border:none;border-radius:10px;font-size:1.05em;font-weight:700;cursor:pointer;transition:all .3s;letter-spacing:1px;margin-bottom:10px}
+.btn-primary{background:linear-gradient(135deg,#00d2d3,#0abde3);color:#0a0a1a}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,210,211,0.4)}
+.btn-secondary{background:rgba(255,255,255,0.1);color:#fff;border:2px solid rgba(255,255,255,0.2)}
+.btn-secondary:hover{background:rgba(255,255,255,0.18)}
+.btn-danger{background:linear-gradient(135deg,#ff4757,#ff6b81);color:#fff}
+.btn-danger:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(255,71,87,0.4)}
+.btn:disabled{opacity:0.5;cursor:not-allowed;transform:none!important}
+.divider{color:#555;margin:15px 0;font-size:0.85em;position:relative}
+.divider::before,.divider::after{content:'';position:absolute;top:50%;width:35%;height:1px;background:rgba(255,255,255,0.1)}
+.divider::before{left:0}
+.divider::after{right:0}
+.player-list{margin:20px 0;max-height:200px;overflow-y:auto}
+.player-item{display:flex;align-items:center;justify-content:space-between;padding:10px 15px;margin:5px 0;background:rgba(255,255,255,0.06);border-radius:8px;font-size:0.95em}
+.player-item .dot{width:10px;height:10px;border-radius:50%;margin-right:10px;display:inline-block}
+.player-item .host-badge{font-size:0.7em;background:#ffa502;color:#000;padding:2px 6px;border-radius:4px;font-weight:700}
+.info{color:#888;font-size:0.85em;margin:10px 0}
+.room-code{font-size:1.1em;font-weight:900;color:#00d2d3;letter-spacing:1px;cursor:pointer;padding:12px 16px;background:rgba(0,210,211,0.1);border:2px solid rgba(0,210,211,0.3);border-radius:8px;display:inline-block;margin:5px 0;word-break:break-all;max-width:100%;line-height:1.2}
+.room-code:hover{background:rgba(0,210,211,0.2)}
+#gameCanvas{position:fixed;inset:0;z-index:1;touch-action:none}
+#hud{position:fixed;top:0;left:0;right:0;z-index:5;display:none;padding:12px 20px;pointer-events:none}
+#hud.active{display:flex;justify-content:space-between;align-items:flex-start}
+.hud-item{background:rgba(0,0,0,0.6);backdrop-filter:blur(5px);padding:8px 16px;border-radius:10px;font-size:0.9em;border:1px solid rgba(255,255,255,0.1)}
+.hud-left,.hud-center,.hud-right{display:flex;flex-direction:column;gap:8px}
+.hud-center{align-items:center}
+.hud-right{align-items:flex-end}
+.stealth-bar{width:140px;height:10px;background:rgba(255,255,255,0.1);border-radius:5px;overflow:hidden;margin-top:4px}
+.stealth-fill{height:100%;background:linear-gradient(90deg,#ff4757,#ffa502,#2ed573);border-radius:5px;transition:width .3s}
+.role-tag{font-weight:700;padding:4px 12px;border-radius:6px;font-size:0.85em}
+.role-catcher{background:rgba(255,71,87,0.3);color:#ff6b81;border:1px solid rgba(255,71,87,0.4)}
+.role-invisible{background:rgba(0,210,211,0.3);color:#48dbfb;border:1px solid rgba(0,210,211,0.4)}
+.results-list{margin:20px 0;text-align:left}
+.result-item{display:flex;align-items:center;justify-content:space-between;padding:12px 15px;margin:6px 0;background:rgba(255,255,255,0.06);border-radius:10px}
+.result-rank{font-size:1.3em;margin-right:12px;min-width:36px;text-align:center}
+.result-info{flex:1}
+.result-name{font-weight:700;font-size:1em}
+.result-detail{font-size:0.8em;color:#888;margin-top:2px}
+.result-score{font-size:1.1em;color:#ffa502;font-weight:700}
+.loading{color:#888;font-size:0.9em;margin:10px 0}
+.loading::after{content:'';animation:dots 1.5s infinite}
+@keyframes dots{0%{content:''}33%{content:'.'}66%{content:'..'}100%{content:'...'}}
+.toast{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:20;font-size:2em;font-weight:900;padding:20px 40px;border-radius:15px;animation:toastAnim 2s forwards;pointer-events:none}
+@keyframes toastAnim{0%{opacity:0;transform:translate(-50%,-50%) scale(0.5)}15%{opacity:1;transform:translate(-50%,-50%) scale(1.1)}25%{transform:translate(-50%,-50%) scale(1)}80%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(0.8) translateY(-30px)}}
+.spectator-msg{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:6;background:rgba(0,0,0,0.7);padding:10px 25px;border-radius:10px;font-size:0.9em;color:#ff6b81;border:1px solid rgba(255,71,87,0.3)}
+input[type="text"]{font-size:16px!important}
+#gameCanvas{touch-action:none}
+.screen{overflow-y:auto}
+@media(max-width:540px){
+  .container{padding:22px 16px;border-radius:14px;max-height:88vh;overflow-y:auto}
+  .title{font-size:2em;letter-spacing:2px}
+  .subtitle{margin-bottom:16px;font-size:0.85em}
+  .btn{padding:13px;font-size:0.92em}
+  #hud{padding:7px 10px;flex-wrap:wrap;gap:4px}
+  .hud-item{padding:5px 8px;font-size:0.72em}
+  .hud-left,.hud-right{gap:4px}
+  .stealth-bar{width:80px;height:7px}
+  .result-rank{font-size:1em;min-width:26px}
+  .result-name{font-size:0.88em}
+  .result-detail{font-size:0.74em}
+  .result-score{font-size:0.95em}
+  .room-code{font-size:1.05em;letter-spacing:2px}
+  .results-list{max-height:40vh;overflow-y:auto}
+  .spectator-msg{font-size:0.75em;padding:7px 14px;bottom:160px}
+}
+@media(max-width:380px){
+  .title{font-size:1.55em}
+  .container{padding:18px 12px}
+  .hud-item{font-size:0.65em;padding:4px 6px}
+}
+</style>
+</head>
+<body>
+
+<div id="screen-menu" class="screen active">
+<div class="container">
+<h1 class="title">INVISI<span class="accent">CATCH</span></h1>
+<p class="subtitle">Esconde-esconde Multiplayer em Rede</p>
+<input type="text" id="playerName" placeholder="Seu nome..." autofocus>
+<button class="btn btn-primary" id="btnCreate">&#9752; Criar Sala</button>
+<div class="divider">ou entre em uma sala</div>
+<input type="text" id="roomCode" placeholder="Código da sala...">
+<button class="btn btn-secondary" id="btnJoin">&#10132; Entrar na Sala</button>
+<p class="info" style="margin-top:15px">Necessário conexão com internet para conectar jogadores.</p>
+</div>
+</div>
+
+<div id="screen-lobby" class="screen">
+<div class="container">
+<h2>Sala Criada!</h2>
+<p class="info">Compartilhe o código abaixo:</p>
+<div class="room-code" id="roomDisplay" title="Clique para copiar"></div>
+<p class="info" id="copyMsg"></p>
+<div id="playerList" class="player-list"></div>
+<button class="btn btn-primary" id="btnStart" style="display:none">&#9654; Iniciar Jogo</button>
+<p class="loading" id="waitMsg" style="display:none">Aguardando o host iniciar</p>
+</div>
+</div>
+
+<div id="screen-game" class="screen">
+<canvas id="gameCanvas"></canvas>
+</div>
+
+<div id="hud">
+<div class="hud-left">
+<div class="hud-item" id="hudTimer">&#9200; 05:00</div>
+<div class="hud-item" id="hudScore">&#11088; Coletáveis: 0</div>
+</div>
+<div class="hud-center">
+<div class="hud-item"><span class="role-tag" id="hudRole"></span></div>
+</div>
+<div class="hud-right">
+<div class="hud-item" id="hudStealth" style="display:none">
+&#128123; Invisibilidade
+<div class="stealth-bar"><div class="stealth-fill" id="stealthFill"></div></div>
+</div>
+<div class="hud-item" id="hudPhase">Fase 1</div>
+</div>
+</div>
+
+<div id="screen-results" class="screen">
+<div class="container">
+<h2 id="resultTitle" class="title" style="font-size:1.8em;margin-bottom:20px"></h2>
+<div id="resultsList" class="results-list"></div>
+<p id="nextCatcherMsg" class="info" style="font-size:1em;margin:15px 0;color:#ff6b81"></p>
+<button class="btn btn-primary" id="btnNextPhase">&#9654; Próxima Fase</button>
+<button class="btn btn-secondary" id="btnBackMenu">&#8617; Voltar ao Menu</button>
+</div>
+</div>
+
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script>
+// ============================================================
+//  CONFIGURATION
+// ============================================================
+const CFG = {
+    TILE: 32,
+    MAP_W: 40,
+    MAP_H: 30,
+    CATCHER_SPEED: 300,
+    INVISIBLE_SPEED: 100,
+    PLAYER_R: 10,
+    STEALTH_MAX: 18,
+    GAME_TIME: 300,
+    MAX_COLLECT: 20,
+    INITIAL_COLLECT: 14,
+    COLLECT_R: 22,
+    CATCH_R: 22,
+    HINT_DUR: 3.5,
+    SPAWN_INTERVAL: 4.5,
+    MIN_WALL_DIST: 1,
+    NET_RATE: 45,
+    VISIBLE_FADE: 5,
+};
+
+// ============================================================
+//  MAP DATA
+// ============================================================
+function buildMap(rooms, corridors, pillars) {
+    const g = [];
+    for (let y = 0; y < CFG.MAP_H; y++) { g[y] = []; for (let x = 0; x < CFG.MAP_W; x++) g[y][x] = 1; }
+    for (const [rx, ry, rw, rh] of rooms)
+        for (let y = ry; y < ry + rh && y < CFG.MAP_H; y++)
+            for (let x = rx; x < rx + rw && x < CFG.MAP_W; x++) g[y][x] = 0;
+    for (const [x1, y1, x2, y2, t] of corridors) {
+        const th = t || 2;
+        if (x1 === x2) for (let y = Math.min(y1, y2); y <= Math.max(y1, y2); y++) for (let d = 0; d < th; d++) { if (x1+d >= 0 && x1+d < CFG.MAP_W && y >= 0 && y < CFG.MAP_H) g[y][x1+d] = 0; }
+        else for (let x = Math.min(x1, x2); x <= Math.max(x1, x2); x++) for (let d = 0; d < th; d++) { if (y1+d >= 0 && y1+d < CFG.MAP_H && x >= 0 && x < CFG.MAP_W) g[y1+d][x] = 0; }
+    }
+    if (pillars) for (const [px, py] of pillars) if (py >= 0 && py < CFG.MAP_H && px >= 0 && px < CFG.MAP_W) g[py][px] = 1;
+    return g;
+}
+
+function buildOpenMap(walls) {
+    const g = [];
+    for (let y = 0; y < CFG.MAP_H; y++) { g[y] = []; for (let x = 0; x < CFG.MAP_W; x++) g[y][x] = 0; }
+    for (let x = 0; x < CFG.MAP_W; x++) { g[0][x] = 1; g[CFG.MAP_H-1][x] = 1; }
+    for (let y = 0; y < CFG.MAP_H; y++) { g[y][0] = 1; g[y][CFG.MAP_W-1] = 1; }
+    for (const [wx, wy, ww, wh] of walls)
+        for (let y = wy; y < wy + wh && y < CFG.MAP_H; y++)
+            for (let x = wx; x < wx + ww && x < CFG.MAP_W; x++) g[y][x] = 1;
+    return g;
+}
+
+const MAPS = [
+    // MAP 0 - Praça Aberta
+    buildOpenMap([
+        [7,7,2,2],[31,7,2,2],[7,21,2,2],[31,21,2,2],
+        [18,12,4,2],[18,16,4,2],
+        [12,14,2,2],[26,14,2,2],
+        [19,5,2,2],[19,23,2,2]
+    ]),
+    // MAP 1 - Ruínas Leves
+    buildOpenMap([
+        [5,5,3,2],[12,9,2,3],[20,6,2,2],[27,9,2,3],[34,5,3,2],
+        [9,18,3,2],[17,14,2,3],[22,14,2,3],[29,18,3,2],
+        [18,23,4,2],[4,14,2,2],[34,14,2,2]
+    ]),
+    // MAP 2 - Arena Aberta
+    buildOpenMap([
+        [10,8,3,3],[27,8,3,3],[10,19,3,3],[27,19,3,3],
+        [18,10,4,1],[18,19,4,1],
+        [15,14,1,3],[24,14,1,3],
+        [19,14,2,2]
+    ])
+];
+
+const MAP_NAMES = ['Praca Aberta', 'Ruinas Leves', 'Arena Aberta'];
+
+function getSpawnPoints(mapIdx) {
+    const m = MAPS[mapIdx];
+    const findFloor = (sx, sy, range) => {
+        for (let r = 0; r < range; r++)
+            for (let dy = -r; dy <= r; dy++)
+                for (let dx = -r; dx <= r; dx++) {
+                    const tx = sx + dx, ty = sy + dy;
+                    if (tx > 0 && tx < CFG.MAP_W-1 && ty > 0 && ty < CFG.MAP_H-1 && m[ty][tx] === 0) return [tx, ty];
+                }
+        return [sx, sy];
+    };
+    return {
+        catcher: findFloor(20, 15, 10),
+        invisible: [findFloor(3, 3, 8), findFloor(36, 3, 8), findFloor(3, 26, 8), findFloor(36, 26, 8), findFloor(20, 3, 8), findFloor(20, 26, 8)]
+    };
+}
+
+// ============================================================
+//  UTILITIES
+// ============================================================
+function lerp(a, b, t) { return a + (b - a) * t; }
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+function dist(x1, y1, x2, y2) { return Math.hypot(x2 - x1, y2 - y1); }
+function uid() { return Math.random().toString(36).substr(2, 8); }
+
+function hasLineOfSight(x1, y1, x2, y2, map) {
+    let tx = Math.floor(x1 / CFG.TILE), ty = Math.floor(y1 / CFG.TILE);
+    const ex = Math.floor(x2 / CFG.TILE), ey = Math.floor(y2 / CFG.TILE);
+    const dx = Math.abs(ex - tx), dy = Math.abs(ey - ty);
+    const sx = tx < ex ? 1 : -1, sy = ty < ey ? 1 : -1;
+    let err = dx - dy;
+    while (true) {
+        if (tx < 0 || tx >= CFG.MAP_W || ty < 0 || ty >= CFG.MAP_H) return false;
+        if (map[ty][tx] === 1) return false;
+        if (tx === ex && ty === ey) break;
+        const e2 = 2 * err;
+        if (e2 > -dy) { err -= dy; tx += sx; }
+        if (e2 < dx) { err += dx; ty += sy; }
+    }
+    return true;
+}
+
+function wallCollides(x, y, r, map) {
+    const l = Math.floor((x - r) / CFG.TILE), ri = Math.floor((x + r) / CFG.TILE);
+    const t = Math.floor((y - r) / CFG.TILE), b = Math.floor((y + r) / CFG.TILE);
+    for (let ty = t; ty <= b; ty++)
+        for (let tx = l; tx <= ri; tx++) {
+            if (tx < 0 || tx >= CFG.MAP_W || ty < 0 || ty >= CFG.MAP_H) return true;
+            if (map[ty][tx] === 1) return true;
+        }
+    return false;
+}
+
+// ============================================================
+//  AUDIO
+// ============================================================
+class SfxEngine {
+    constructor() { this.ctx = null; }
+    init() { try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {} }
+    play(type) {
+        if (!this.ctx) return;
+        if (this.ctx.state === 'suspended') this.ctx.resume();
+        const o = this.ctx.createOscillator(), g = this.ctx.createGain();
+        o.connect(g); g.connect(this.ctx.destination);
+        const t = this.ctx.currentTime;
+        switch (type) {
+            case 'collect':
+                o.type='sine'; o.frequency.setValueAtTime(660,t); o.frequency.exponentialRampToValueAtTime(1320,t+0.12);
+                g.gain.setValueAtTime(0.15,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.25);
+                o.start(t); o.stop(t+0.25); break;
+            case 'catch':
+                o.type='sawtooth'; o.frequency.setValueAtTime(300,t); o.frequency.exponentialRampToValueAtTime(80,t+0.6);
+                g.gain.setValueAtTime(0.2,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.6);
+                o.start(t); o.stop(t+0.6); break;
+            case 'hint':
+                o.type='sine'; o.frequency.setValueAtTime(880,t); o.frequency.exponentialRampToValueAtTime(440,t+0.3);
+                g.gain.setValueAtTime(0.08,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.3);
+                o.start(t); o.stop(t+0.3); break;
+            case 'warn':
+                o.type='square'; o.frequency.setValueAtTime(180,t);
+                g.gain.setValueAtTime(0.06,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.15);
+                o.start(t); o.stop(t+0.15); break;
+            case 'start':
+                o.type='sine'; o.frequency.setValueAtTime(440,t); o.frequency.setValueAtTime(660,t+0.15); o.frequency.setValueAtTime(880,t+0.3);
+                g.gain.setValueAtTime(0.12,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.5);
+                o.start(t); o.stop(t+0.5); break;
+            case 'end':
+                o.type='sine'; o.frequency.setValueAtTime(880,t); o.frequency.setValueAtTime(660,t+0.2); o.frequency.setValueAtTime(440,t+0.4);
+                g.gain.setValueAtTime(0.12,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.7);
+                o.start(t); o.stop(t+0.7); break;
+        }
+    }
+}
+const sfx = new SfxEngine();
+
+// ============================================================
+//  PARTICLES
+// ============================================================
+const particles = [];
+function addP(x, y, color, vx, vy, life, size) { particles.push({x,y,color,vx,vy,life,ml:life,size}); }
+function updateParticles(dt) {
+    for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 30 * dt; p.life -= dt;
+        if (p.life <= 0) particles.splice(i, 1);
+    }
+}
+function drawParticles(ctx) {
+    for (const p of particles) {
+        ctx.globalAlpha = clamp(p.life / p.ml, 0, 1);
+        ctx.fillStyle = p.color;
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.size * (p.life / p.ml), 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+}
+function burstCollect(x, y) { for (let i = 0; i < 14; i++) { const a = Math.PI*2/14*i, s = 60+Math.random()*40; addP(x,y,'#eccc68',Math.cos(a)*s,Math.sin(a)*s,0.5+Math.random()*0.3,3); } }
+function burstCatch(x, y) { for (let i = 0; i < 24; i++) { const a = Math.random()*Math.PI*2, s = 80+Math.random()*80; addP(x,y,'#ff4757',Math.cos(a)*s,Math.sin(a)*s,0.7+Math.random()*0.3,4); } }
+function trailDust(x, y, color) { addP(x+Math.random()*6-3, y+12, color, Math.random()*10-5, -Math.random()*15, 0.3+Math.random()*0.2, 2); }
+
+// ============================================================
+//  SPRITE RENDERING
+// ============================================================
+function drawFloor(ctx, camX, camY, cw, ch) {
+    const sx = Math.max(0, Math.floor(camX / CFG.TILE)),
+          sy = Math.max(0, Math.floor(camY / CFG.TILE)),
+          ex = Math.min(CFG.MAP_W, Math.ceil((camX + cw) / CFG.TILE) + 1),
+          ey = Math.min(CFG.MAP_H, Math.ceil((camY + ch) / CFG.TILE) + 1);
+    for (let y = sy; y < ey; y++)
+        for (let x = sx; x < ex; x++) {
+            ctx.fillStyle = (x + y) % 2 === 0 ? '#161626' : '#1a1a2e';
+            ctx.fillRect(x * CFG.TILE, y * CFG.TILE, CFG.TILE, CFG.TILE);
+        }
+}
+
+function drawWalls(ctx, camX, camY, cw, ch, map) {
+    const sx = Math.max(0, Math.floor(camX / CFG.TILE)),
+          sy = Math.max(0, Math.floor(camY / CFG.TILE)),
+          ex = Math.min(CFG.MAP_W, Math.ceil((camX + cw) / CFG.TILE) + 1),
+          ey = Math.min(CFG.MAP_H, Math.ceil((camY + ch) / CFG.TILE) + 1);
+    const T = CFG.TILE;
+    for (let y = sy; y < ey; y++)
+        for (let x = sx; x < ex; x++) {
+            if (map[y][x] !== 1) continue;
+            const px = x * T, py = y * T;
+            ctx.fillStyle = '#2a2a40'; ctx.fillRect(px, py, T, T);
+            ctx.fillStyle = '#363652'; ctx.fillRect(px, py, T, 4);
+            ctx.fillStyle = '#32324c'; ctx.fillRect(px, py, 3, T);
+            ctx.fillStyle = '#1e1e34'; ctx.fillRect(px, py + T - 3, T, 3);
+            ctx.fillStyle = '#222238'; ctx.fillRect(px + T - 2, py, 2, T);
+            // subtle brick line
+            ctx.fillStyle = '#252540';
+            ctx.fillRect(px + 4, py + T/2, T - 8, 1);
+        }
+}
+
+function drawStar(ctx, cx, cy, r1, r2, pts, rot) {
+    ctx.beginPath();
+    for (let i = 0; i < pts * 2; i++) {
+        const a = (i * Math.PI / pts) - Math.PI / 2 + rot, r = i % 2 === 0 ? r1 : r2;
+        i === 0 ? ctx.moveTo(cx + Math.cos(a)*r, cy + Math.sin(a)*r) : ctx.lineTo(cx + Math.cos(a)*r, cy + Math.sin(a)*r);
+    }
+    ctx.closePath();
+}
+
+function drawCollectible(ctx, cx, cy, time) {
+    const fy = Math.sin(time * 3 + cx * 0.01) * 4;
+    const y = cy + fy;
+    // glow
+    const gg = ctx.createRadialGradient(cx, y, 2, cx, y, 26);
+    gg.addColorStop(0, 'rgba(255,165,2,0.35)'); gg.addColorStop(1, 'rgba(255,165,2,0)');
+    ctx.fillStyle = gg; ctx.beginPath(); ctx.arc(cx, y, 26, 0, Math.PI*2); ctx.fill();
+    // star
+    ctx.fillStyle = '#ffd32a';
+    drawStar(ctx, cx, y, 12, 5.2, 5, time * 1.5);
+    ctx.fill();
+    ctx.fillStyle = '#fff8'; ctx.beginPath(); ctx.arc(cx - 2, y - 3, 3, 0, Math.PI*2); ctx.fill();
+    // sparkles
+    for (let i = 0; i < 3; i++) {
+        const sa = time * 1.8 + i * 2.1, sd = 14 + Math.sin(time * 2.5 + i) * 4;
+        ctx.fillStyle = '#ffd32a'; ctx.globalAlpha = 0.5 + Math.sin(time * 4 + i) * 0.3;
+        ctx.beginPath(); ctx.arc(cx + Math.cos(sa)*sd, y + Math.sin(sa)*sd, 1.8, 0, Math.PI*2); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+}
+
+function drawCharacter(ctx, x, y, role, dir, moving, time, alpha) {
+    ctx.globalAlpha = clamp(alpha, 0, 1);
+    const b = moving ? Math.sin(time * 10) * 2.5 : Math.sin(time * 2) * 0.8;
+    // shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.beginPath(); ctx.ellipse(x, y + 14, 10, 4, 0, 0, Math.PI*2); ctx.fill();
+
+    const dx = dir === 'left' ? -1.5 : dir === 'right' ? 1.5 : 0;
+    const dy = dir === 'up' ? -1.5 : dir === 'down' ? 1.5 : 0;
+
+    if (role === 'catcher') {
+        // body
+        const bg = ctx.createRadialGradient(x, y - 2 + b, 3, x, y - 2 + b, 15);
+        bg.addColorStop(0, '#ff6b81'); bg.addColorStop(1, '#ee5a24');
+        ctx.fillStyle = bg; ctx.beginPath(); ctx.arc(x, y - 2 + b, 14, 0, Math.PI*2); ctx.fill();
+        // horns
+        ctx.fillStyle = '#c0392b';
+        ctx.beginPath(); ctx.moveTo(x-9,y-13+b); ctx.lineTo(x-5,y-23+b); ctx.lineTo(x-1,y-13+b); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(x+1,y-13+b); ctx.lineTo(x+5,y-23+b); ctx.lineTo(x+9,y-13+b); ctx.fill();
+        // eyes
+        ctx.fillStyle='#fff';
+        ctx.beginPath(); ctx.ellipse(x-5,y-5+b,4,5,0,0,Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(x+5,y-5+b,4,5,0,0,Math.PI*2); ctx.fill();
+        // pupils
+        ctx.fillStyle='#2d1b00';
+        ctx.beginPath(); ctx.arc(x-5+dx,y-5+b+dy,2,0,Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(x+5+dx,y-5+b+dy,2,0,Math.PI*2); ctx.fill();
+        // eyebrows
+        ctx.strokeStyle='#c0392b'; ctx.lineWidth=2.5; ctx.lineCap='round';
+        ctx.beginPath(); ctx.moveTo(x-10,y-12+b); ctx.lineTo(x-2,y-10+b); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(x+2,y-10+b); ctx.lineTo(x+10,y-12+b); ctx.stroke();
+        // mouth
+        ctx.strokeStyle='#c0392b'; ctx.lineWidth=2;
+        ctx.beginPath(); ctx.arc(x,y+4+b,4,0.1,Math.PI-0.1); ctx.stroke();
+        // feet
+        if (moving) {
+            const fo = Math.sin(time * 12) * 4;
+            ctx.fillStyle='#c0392b';
+            ctx.beginPath(); ctx.ellipse(x-5,y+13+fo,4,3,0,0,Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.ellipse(x+5,y+13-fo,4,3,0,0,Math.PI*2); ctx.fill();
+        } else {
+            ctx.fillStyle='#c0392b';
+            ctx.beginPath(); ctx.ellipse(x-5,y+13,4,3,0,0,Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.ellipse(x+5,y+13,4,3,0,0,Math.PI*2); ctx.fill();
+        }
+    } else {
+        // ghost body
+        const gg = ctx.createRadialGradient(x, y - 2 + b, 3, x, y - 2 + b, 15);
+        gg.addColorStop(0, '#48dbfb'); gg.addColorStop(1, '#0abde3');
+        ctx.fillStyle = gg;
+        ctx.beginPath();
+        ctx.arc(x, y - 5 + b, 13, Math.PI, 0);
+        // wavy bottom
+        const baseY = y + 8 + b;
+        for (let i = 0; i <= 4; i++) {
+            const wx = x - 13 + i * 6.5;
+            const wy = baseY + Math.sin(time * 5 + i * 1.5) * 3;
+            ctx.lineTo(wx, i % 2 === 0 ? wy + 4 : wy);
+        }
+        ctx.closePath(); ctx.fill();
+        // glow
+        ctx.shadowColor='#48dbfb'; ctx.shadowBlur=8; ctx.fill(); ctx.shadowBlur=0;
+        // eyes
+        ctx.fillStyle='#fff';
+        ctx.beginPath(); ctx.ellipse(x-5,y-7+b,4.5,5.5,0,0,Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(x+5,y-7+b,4.5,5.5,0,0,Math.PI*2); ctx.fill();
+        // pupils
+        ctx.fillStyle='#0984e3';
+        ctx.beginPath(); ctx.arc(x-5+dx,y-7+b+dy,2.2,0,Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(x+5+dx,y-7+b+dy,2.2,0,Math.PI*2); ctx.fill();
+        // cute blush
+        ctx.fillStyle='rgba(255,150,150,0.25)';
+        ctx.beginPath(); ctx.ellipse(x-9,y-2+b,3,2,0,0,Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(x+9,y-2+b,3,2,0,0,Math.PI*2); ctx.fill();
+        // smile
+        ctx.strokeStyle='#0984e3'; ctx.lineWidth=1.8;
+        ctx.beginPath(); ctx.arc(x,y+b,3.5,0.2,Math.PI-0.2); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+}
+
+function drawHintRing(ctx, h) {
+    const progress = 1 - h.timer / CFG.HINT_DUR;
+    const r = 15 + progress * 60;
+    ctx.strokeStyle = `rgba(0,210,211,${1 - progress})`;
+    ctx.lineWidth = 3 - progress * 2;
+    ctx.beginPath(); ctx.arc(h.x, h.y, r, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = `rgba(255,210,50,${0.6 - progress * 0.6})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(h.x, h.y, r * 0.6, 0, Math.PI * 2); ctx.stroke();
+}
+
+function drawMinimap(ctx, state, me, cw, ch) {
+    const mmW = cw < 540 ? 96 : 160, mmH = mmW * (CFG.MAP_H / CFG.MAP_W);
+    const mx = cw - mmW - 12, my = ch - mmH - 12;
+    const sx = mmW / CFG.MAP_W, sy = mmH / CFG.MAP_H;
+    // bg
+    ctx.fillStyle = 'rgba(0,0,0,0.65)';
+    ctx.beginPath(); roundRect(ctx, mx-4, my-4, mmW+8, mmH+8, 8); ctx.fill();
+    // walls
+    const map = state.map;
+    for (let y = 0; y < CFG.MAP_H; y++)
+        for (let x = 0; x < CFG.MAP_W; x++) {
+            ctx.fillStyle = map[y][x] === 1 ? '#3a3a55' : '#111122';
+            ctx.fillRect(mx + x * sx, my + y * sy, sx + 0.5, sy + 0.5);
+        }
+    // collectibles
+    ctx.fillStyle = '#ffa502';
+    for (const c of state.collectibles) {
+        ctx.beginPath(); ctx.arc(mx + (c.x / CFG.TILE) * sx, my + (c.y / CFG.TILE) * sy, 2, 0, Math.PI*2); ctx.fill();
+    }
+    // players
+    for (const p of state.players) {
+        if (p.caught) continue;
+        if (p.role === 'catcher') { ctx.fillStyle = '#ff4757'; }
+        else if (p.id === me.id) { ctx.fillStyle = '#48dbfb'; }
+        else if (me.role === 'catcher' && !p.isVisibleToCatcher) continue;
+        else { ctx.fillStyle = '#48dbfb'; }
+        ctx.beginPath(); ctx.arc(mx + (p.x / CFG.TILE) * sx, my + (p.y / CFG.TILE) * sy, 3, 0, Math.PI*2); ctx.fill();
+    }
+    // hints
+    for (const h of state.hints) {
+        const pr = 1 - h.timer / CFG.HINT_DUR;
+        ctx.strokeStyle = `rgba(0,210,211,${0.8-pr*0.8})`; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.arc(mx + (h.x / CFG.TILE) * sx, my + (h.y / CFG.TILE) * sy, 3 + pr * 8, 0, Math.PI*2); ctx.stroke();
+    }
+    // border
+    ctx.strokeStyle = 'rgba(255,255,255,0.15)'; ctx.lineWidth = 1;
+    ctx.beginPath(); roundRect(ctx, mx-4, my-4, mmW+8, mmH+8, 8); ctx.stroke();
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+    ctx.moveTo(x+r, y); ctx.lineTo(x+w-r, y); ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+    ctx.lineTo(x+w, y+h-r); ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+    ctx.lineTo(x+r, y+h); ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+    ctx.lineTo(x, y+r); ctx.quadraticCurveTo(x,y,x+r,y);
+}
+
+// ============================================================
+//  GAME HOST LOGIC
+// ============================================================
+class GameHost {
+    constructor(mapIdx, playerInfos, catcherId) {
+        this.map = MAPS[mapIdx];
+        this.mapIdx = mapIdx;
+        const spawns = getSpawnPoints(mapIdx);
+        let invIdx = 0;
+        this.players = playerInfos.map(pi => {
+            const isCatcher = pi.id === catcherId;
+            const sp = isCatcher ? spawns.catcher : spawns.invisible[invIdx++ % spawns.invisible.length];
+            return {
+                id: pi.id, name: pi.name, role: isCatcher ? 'catcher' : 'invisible',
+                x: (sp[0] + 0.5) * CFG.TILE, y: (sp[1] + 0.5) * CFG.TILE,
+                dir: 'down', moving: false, score: pi.prevScore || 0,
+                caught: false, caughtTime: 0, stealth: CFG.STEALTH_MAX,
+                isVisibleToCatcher: false, disconnected: false
+            };
+        });
+        this.collectibles = [];
+        this.hints = [];
+        this.timer = CFG.GAME_TIME;
+        this.spawnTimer = 0;
+        this.gameOver = false;
+        this.catchOrder = [];
+        this.warnTimer = 0;
+        for (let i = 0; i < CFG.INITIAL_COLLECT; i++) this.spawnCollectible();
+    }
+
+    spawnCollectible() {
+        if (this.collectibles.length >= CFG.MAX_COLLECT) return;
+        for (let a = 0; a < 200; a++) {
+            const tx = 2 + Math.floor(Math.random() * (CFG.MAP_W - 4));
+            const ty = 2 + Math.floor(Math.random() * (CFG.MAP_H - 4));
+            if (this.map[ty][tx] !== 0) continue;
+            let tooClose = false;
+            for (let dy = -CFG.MIN_WALL_DIST; dy <= CFG.MIN_WALL_DIST && !tooClose; dy++)
+                for (let dx = -CFG.MIN_WALL_DIST; dx <= CFG.MIN_WALL_DIST && !tooClose; dx++) {
+                    const ny = ty+dy, nx = tx+dx;
+                    if (ny < 0 || ny >= CFG.MAP_H || nx < 0 || nx >= CFG.MAP_W || this.map[ny][nx] === 1) tooClose = true;
+                }
+            if (tooClose) continue;
+            const cx = (tx+0.5)*CFG.TILE, cy = (ty+0.5)*CFG.TILE;
+            if (this.collectibles.some(c => dist(c.x,c.y,cx,cy) < CFG.TILE*3)) continue;
+            this.collectibles.push({x: cx, y: cy, id: uid()});
+            return;
+        }
+
+        // Fallback: guarantee at least one spawn attempt in open tiles if strict rules fail.
+        for (let a = 0; a < 120; a++) {
+            const tx = 1 + Math.floor(Math.random() * (CFG.MAP_W - 2));
+            const ty = 1 + Math.floor(Math.random() * (CFG.MAP_H - 2));
+            if (this.map[ty][tx] !== 0) continue;
+            const cx = (tx + 0.5) * CFG.TILE, cy = (ty + 0.5) * CFG.TILE;
+            if (this.collectibles.some(c => dist(c.x, c.y, cx, cy) < CFG.TILE * 2)) continue;
+            this.collectibles.push({x: cx, y: cy, id: uid()});
+            return;
+        }
+    }
+
+    update(dt, inputs) {
+        if (this.gameOver) return;
+        this.timer -= dt;
+        if (this.timer <= 0) { this.timer = 0; this.endGame(); return; }
+
+        this.spawnTimer += dt;
+        if (this.spawnTimer >= CFG.SPAWN_INTERVAL) { this.spawnTimer = 0; this.spawnCollectible(); }
+
+        const catcher = this.players.find(p => p.role === 'catcher');
+
+        for (const p of this.players) {
+            if (p.caught || p.disconnected) continue;
+            const inp = inputs[p.id] || {};
+            const spd = p.role === 'catcher' ? CFG.CATCHER_SPEED : CFG.INVISIBLE_SPEED;
+            let vx = 0, vy = 0;
+            if (inp.up || inp.w) vy -= 1;
+            if (inp.down || inp.s) vy += 1;
+            if (inp.left || inp.a) vx -= 1;
+            if (inp.right || inp.d) vx += 1;
+            if (inp.jvx) vx = clamp(vx + inp.jvx, -1, 1);
+            if (inp.jvy) vy = clamp(vy + inp.jvy, -1, 1);
+            if (vx && vy) { vx *= 0.707; vy *= 0.707; }
+            p.moving = vx !== 0 || vy !== 0;
+            if (vx < 0) p.dir = 'left'; if (vx > 0) p.dir = 'right';
+            if (vy < 0) p.dir = 'up'; if (vy > 0) p.dir = 'down';
+            const nx = p.x + vx * spd * dt, ny = p.y + vy * spd * dt;
+            if (!wallCollides(nx, p.y, CFG.PLAYER_R, this.map)) p.x = nx;
+            if (!wallCollides(p.x, ny, CFG.PLAYER_R, this.map)) p.y = ny;
+            p.x = clamp(p.x, CFG.PLAYER_R, CFG.MAP_W * CFG.TILE - CFG.PLAYER_R);
+            p.y = clamp(p.y, CFG.PLAYER_R, CFG.MAP_H * CFG.TILE - CFG.PLAYER_R);
+        }
+
+        // Collectible pickup
+        for (const p of this.players) {
+            if (p.role !== 'invisible' || p.caught) continue;
+            for (let i = this.collectibles.length - 1; i >= 0; i--) {
+                const c = this.collectibles[i];
+                if (dist(p.x, p.y, c.x, c.y) < CFG.COLLECT_R) {
+                    p.score++;
+                    p.stealth = CFG.STEALTH_MAX + 1.5;
+                    this.hints.push({x: c.x, y: c.y, timer: CFG.HINT_DUR, playerId: p.id});
+                    this.collectibles.splice(i, 1);
+                }
+            }
+        }
+
+        // Stealth / visibility
+        for (const p of this.players) {
+            if (p.role !== 'invisible' || p.caught) continue;
+            p.stealth -= dt;
+            // Check if wall blocks line of sight to catcher
+            if (catcher) {
+                const los = hasLineOfSight(catcher.x, catcher.y, p.x, p.y, this.map);
+                p.isVisibleToCatcher = los && (p.stealth <= 0);
+            }
+        }
+
+        // Catching
+        if (catcher) {
+            for (const p of this.players) {
+                if (p.role !== 'invisible' || p.caught) continue;
+                if (dist(catcher.x, catcher.y, p.x, p.y) < CFG.CATCH_R) {
+                    if (hasLineOfSight(catcher.x, catcher.y, p.x, p.y, this.map)) {
+                        p.caught = true;
+                        p.caughtTime = CFG.GAME_TIME - this.timer;
+                        this.catchOrder.push(p.id);
+                        const remaining = this.players.filter(q => q.role === 'invisible' && !q.caught);
+                        if (remaining.length === 0) this.endGame();
+                    }
+                }
+            }
+        }
+
+        // Hints decay
+        for (let i = this.hints.length - 1; i >= 0; i--) {
+            this.hints[i].timer -= dt;
+            if (this.hints[i].timer <= 0) this.hints.splice(i, 1);
+        }
+    }
+
+    endGame() { this.gameOver = true; }
+
+    getState() {
+        return {
+            players: this.players.map(p => ({...p})),
+            collectibles: this.collectibles.map(c => ({...c})),
+            hints: this.hints.map(h => ({...h})),
+            timer: this.timer,
+            mapIdx: this.mapIdx,
+            map: this.map,
+            gameOver: this.gameOver,
+            catchOrder: [...this.catchOrder],
+        };
+    }
+}
+
+// ============================================================
+//  NETWORK
+// ============================================================
+class Network {
+    constructor() {
+        this.peer = null; this.conns = []; this.hostConn = null;
+        this.isHost = false; this.myPeerId = null;
+        this.onMsg = null; this.onJoin = null; this.onLeave = null; this.onReady = null;
+        // Public STUN servers to help mobile/cross-network connections
+        this.config = {
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' },
+                { urls: 'stun:stun2.l.google.com:19302' }
+            ]
+        };
+    }
+    createRoom(cb) {
+        this.isHost = true;
+        this.peer = new Peer(null, {debug: 1, config: this.config});
+        this.peer.on('open', id => { this.myPeerId = id; cb(id); });
+        this.peer.on('connection', conn => {
+            conn.on('open', () => { 
+                this.conns.push(conn); 
+                if (this.onJoin) this.onJoin(conn); 
+            });
+            conn.on('data', d => { if (this.onMsg) this.onMsg(d, conn); });
+            conn.on('close', () => { this.conns = this.conns.filter(c => c !== conn); if (this.onLeave) this.onLeave(conn); });
+            conn.on('error', (err) => { 
+                console.error('Conn error:', err);
+                this.conns = this.conns.filter(c => c !== conn); 
+            });
+        });
+        this.peer.on('error', e => {
+            console.error('Peer host error:', e);
+            if (e.type === 'network') alert('Erro de rede: verifique sua conexão.');
+        });
+    }
+    joinRoom(roomId, cb, errCb) {
+        this.isHost = false;
+        this.peer = new Peer(null, {debug: 1, config: this.config});
+        this.peer.on('open', () => {
+            this.myPeerId = this.peer.id;
+            // reliable: true is safer for initial handshake
+            this.hostConn = this.peer.connect(roomId, {reliable: true});
+            this.hostConn.on('open', () => { cb(); });
+            this.hostConn.on('data', d => { if (this.onMsg) this.onMsg(d); });
+            this.hostConn.on('close', () => { if (this.onLeave) this.onLeave(); });
+            this.hostConn.on('error', e => { 
+                console.error('Join conn error:', e);
+                if (errCb) errCb(e); 
+            });
+        });
+        this.peer.on('error', e => { 
+            console.error('Peer join error:', e);
+            if (errCb) errCb(e); 
+        });
+    }
+    broadcast(data) { for (const c of this.conns) try { c.send(data); } catch(e) {} }
+    send(data) { if (this.hostConn && this.hostConn.open) try { this.hostConn.send(data); } catch(e) {} }
+    destroy() { if (this.peer) { this.peer.destroy(); this.peer = null; } this.conns = []; this.hostConn = null; }
+}
+
+// ============================================================
+//  MAIN APP
+// ============================================================
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+let net = new Network();
+let game = null;
+let currentState = null;
+let myId = null;
+let myName = 'Jogador';
+let isHost = false;
+let lobbyPlayers = [];
+let phase = 0;
+let keys = {};
+let gameRunning = false;
+let camera = {x:0, y:0, shake:0};
+let prevState = null;
+let stateTime = 0;
+let lastNetSend = 0;
+let catcherId = null;
+let spectating = false;
+let toasts = [];
+
+// ============================================================
+//  TOUCH / VIRTUAL JOYSTICK
+// ============================================================
+const joystick = {
+    active: false, touchId: null,
+    baseX: 0, baseY: 0, knobX: 0, knobY: 0,
+    dx: 0, dy: 0, radius: 68
+};
+
+function setupTouchEvents() {
+    canvas.addEventListener('touchstart', e => {
+        // Only prevent default if we're actually in game screen to avoid blocking menu buttons
+        if (gameRunning) {
+            e.preventDefault();
+        }
+        sfx.init();
+        for (const t of e.changedTouches) {
+            if (!joystick.active) {
+                joystick.active = true;
+                joystick.touchId = t.identifier;
+                joystick.baseX = t.clientX;
+                joystick.baseY = t.clientY;
+                joystick.knobX = t.clientX;
+                joystick.knobY = t.clientY;
+                joystick.dx = 0; joystick.dy = 0;
+            }
+        }
+    }, {passive: false});
+    canvas.addEventListener('touchmove', e => {
+        if (gameRunning) {
+            e.preventDefault();
+        }
+        for (const t of e.changedTouches) {
+            if (t.identifier === joystick.touchId) {
+                const ddx = t.clientX - joystick.baseX;
+                const ddy = t.clientY - joystick.baseY;
+                const len = Math.hypot(ddx, ddy);
+                const limit = joystick.radius;
+                if (len > limit) {
+                    joystick.knobX = joystick.baseX + (ddx / len) * limit;
+                    joystick.knobY = joystick.baseY + (ddy / len) * limit;
+                    joystick.dx = ddx / len;
+                    joystick.dy = ddy / len;
+                } else {
+                    joystick.knobX = t.clientX;
+                    joystick.knobY = t.clientY;
+                    joystick.dx = len > 6 ? ddx / limit : 0;
+                    joystick.dy = len > 6 ? ddy / limit : 0;
+                }
+            }
+        }
+    }, {passive: false});
+    canvas.addEventListener('touchend', e => {
+        if (gameRunning) {
+            e.preventDefault();
+        }
+        for (const t of e.changedTouches) {
+            if (t.identifier === joystick.touchId) {
+                joystick.active = false; joystick.touchId = null;
+                joystick.dx = 0; joystick.dy = 0;
+            }
+        }
+    }, {passive: false});
+    canvas.addEventListener('touchcancel', e => {
+        if (gameRunning) {
+            e.preventDefault();
+        }
+        joystick.active = false; joystick.touchId = null;
+        joystick.dx = 0; joystick.dy = 0;
+    }, {passive: false});
+}
+setupTouchEvents();
+
+function drawJoystick(ctx) {
+    const bx = joystick.baseX, by = joystick.baseY;
+    const kx = joystick.knobX, ky = joystick.knobY;
+    const r = joystick.radius;
+    // outer ring
+    ctx.globalAlpha = 0.35;
+    ctx.fillStyle = 'rgba(255,255,255,0.08)';
+    ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.arc(bx, by, r, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+    // inner guide ring
+    ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(bx, by, r * 0.5, 0, Math.PI*2); ctx.stroke();
+    // knob
+    ctx.globalAlpha = 0.75;
+    const kg = ctx.createRadialGradient(kx, ky, 4, kx, ky, r * 0.38);
+    kg.addColorStop(0, 'rgba(255,255,255,0.9)');
+    kg.addColorStop(1, 'rgba(180,220,255,0.55)');
+    ctx.fillStyle = kg;
+    ctx.beginPath(); ctx.arc(kx, ky, r * 0.38, 0, Math.PI*2); ctx.fill();
+    ctx.globalAlpha = 1;
+}
+
+// keyboard
+window.addEventListener('keydown', e => { keys[e.code] = true; });
+window.addEventListener('keyup', e => { keys[e.code] = false; });
+
+// prevent scrolling
+window.addEventListener('keydown', e => {
+    if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code)) e.preventDefault();
+});
+
+function showScreen(name) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    const el = document.getElementById('screen-' + name);
+    if (el) el.classList.add('active');
+    const hud = document.getElementById('hud');
+    if (name === 'game') { hud.classList.add('active'); } else { hud.classList.remove('active'); }
+}
+
+function showToast(text, color) {
+    const el = document.createElement('div');
+    el.className = 'toast';
+    el.style.background = color || 'rgba(0,210,211,0.9)';
+    el.style.color = '#fff';
+    el.textContent = text;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 2200);
+}
+
+function getInput() {
+    return {
+        up: !!keys['ArrowUp'] || !!keys['KeyW'],
+        down: !!keys['ArrowDown'] || !!keys['KeyS'],
+        left: !!keys['ArrowLeft'] || !!keys['KeyA'],
+        right: !!keys['ArrowRight'] || !!keys['KeyD'],
+        w: !!keys['KeyW'], a: !!keys['KeyA'], s: !!keys['KeyS'], d: !!keys['KeyD'],
+        jvx: joystick.active ? joystick.dx : 0,
+        jvy: joystick.active ? joystick.dy : 0
+    };
+}
+
+function formatTime(secs) {
+    const m = Math.floor(secs / 60), s = Math.floor(secs % 60);
+    return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+
+// ============================================================
+//  LOBBY MANAGEMENT
+// ============================================================
+function updateLobbyUI() {
+    const list = document.getElementById('playerList');
+    list.innerHTML = '';
+    for (const p of lobbyPlayers) {
+        const div = document.createElement('div');
+        div.className = 'player-item';
+        div.innerHTML = `<span><span class="dot" style="background:${p.isHost ? '#ffa502' : '#00d2d3'}"></span>${escHtml(p.name)}</span>${p.isHost ? '<span class="host-badge">HOST</span>' : ''}`;
+        list.appendChild(div);
+    }
+    if (isHost) {
+        document.getElementById('btnStart').style.display = lobbyPlayers.length >= 2 ? 'block' : 'none';
+        document.getElementById('waitMsg').style.display = lobbyPlayers.length >= 2 ? 'none' : 'block';
+        document.getElementById('waitMsg').textContent = 'Aguardando mais jogadores...';
+    } else {
+        document.getElementById('btnStart').style.display = 'none';
+        document.getElementById('waitMsg').style.display = 'block';
+    }
+}
+
+function escHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+// ============================================================
+//  CREATE ROOM
+// ============================================================
+const onCreateBtn = () => {
+    myName = document.getElementById('playerName').value.trim() || 'Host';
+    sfx.init();
+    net.destroy();
+    net = new Network();
+    isHost = true;
+    document.getElementById('btnCreate').disabled = true;
+
+    net.createRoom(roomId => {
+        myId = net.myPeerId;
+        lobbyPlayers = [{id: myId, name: myName, isHost: true, prevScore: 0}];
+        document.getElementById('roomDisplay').textContent = roomId;
+        document.getElementById('roomDisplay').onclick = () => {
+            navigator.clipboard.writeText(roomId).then(() => {
+                document.getElementById('copyMsg').textContent = 'Copiado!';
+                setTimeout(() => document.getElementById('copyMsg').textContent = '', 2000);
+            });
+        };
+        showScreen('lobby');
+        updateLobbyUI();
+        document.getElementById('btnCreate').disabled = false;
+    });
+
+    net.onJoin = (conn) => {
+        // wait for their join message
+    };
+    net.onMsg = (data, conn) => {
+        if (data.type === 'join') {
+            lobbyPlayers.push({id: conn.peer, name: data.name, isHost: false, connRef: conn, prevScore: 0});
+            updateLobbyUI();
+            net.broadcast({type: 'lobby', players: lobbyPlayers.map(p => ({id:p.id, name:p.name, isHost:p.isHost}))});
+        }
+        if (data.type === 'input' && gameRunning) {
+            allInputs[conn.peer] = data.keys;
+        }
+    };
+    net.onLeave = (conn) => {
+        lobbyPlayers = lobbyPlayers.filter(p => p.id !== conn.peer);
+        updateLobbyUI();
+        net.broadcast({type: 'lobby', players: lobbyPlayers.map(p => ({id:p.id, name:p.name, isHost:p.isHost}))});
+        if (gameRunning && game) {
+            const gp = game.players.find(p => p.id === conn.peer);
+            if (gp) { gp.disconnected = true; gp.caught = true; }
+        }
+    };
+};
+document.getElementById('btnCreate').onclick = onCreateBtn;
+
+// ============================================================
+//  JOIN ROOM
+// ============================================================
+const onJoinBtn = () => {
+    myName = document.getElementById('playerName').value.trim() || 'Jogador';
+    const roomId = document.getElementById('roomCode').value.trim();
+    if (!roomId) return;
+    sfx.init();
+    net.destroy();
+    net = new Network();
+    isHost = false;
+    document.getElementById('btnJoin').disabled = true;
+
+    net.joinRoom(roomId, () => {
+        myId = net.myPeerId;
+        net.send({type: 'join', name: myName});
+        showScreen('lobby');
+        document.getElementById('roomDisplay').textContent = roomId;
+        document.getElementById('btnJoin').disabled = false;
+    }, (err) => {
+        alert('Erro ao conectar: ' + (err.message || err.type || 'Verifique o código da sala'));
+        document.getElementById('btnJoin').disabled = false;
+    });
+
+    net.onMsg = (data) => {
+        if (data.type === 'lobby') {
+            lobbyPlayers = data.players;
+            updateLobbyUI();
+        }
+        if (data.type === 'start') {
+            phase = data.phase;
+            catcherId = data.catcherId;
+            startGameClient(data);
+        }
+        if (data.type === 'state' && gameRunning) {
+            prevState = currentState;
+            currentState = data.state;
+            stateTime = performance.now();
+        }
+        if (data.type === 'results') {
+            showResults(data);
+        }
+    };
+};
+document.getElementById('btnJoin').onclick = onJoinBtn;
+
+// ============================================================
+//  START GAME (HOST)
+// ============================================================
+let allInputs = {};
+
+const onStartBtn = () => {
+    if (!isHost || lobbyPlayers.length < 2) return;
+    startGameHost();
+};
+document.getElementById('btnStart').onclick = onStartBtn;
+
+function startGameHost() {
+    // pick catcher
+    if (!catcherId || !lobbyPlayers.find(p => p.id === catcherId)) {
+        catcherId = lobbyPlayers[Math.floor(Math.random() * lobbyPlayers.length)].id;
+    }
+    const mapIdx = phase % MAPS.length;
+    const pInfos = lobbyPlayers.map(p => ({id: p.id, name: p.name, prevScore: p.prevScore || 0}));
+    game = new GameHost(mapIdx, pInfos, catcherId);
+    allInputs = {};
+    gameRunning = true;
+    spectating = false;
+    currentState = game.getState();
+
+    net.broadcast({type: 'start', phase, catcherId, mapIdx, players: pInfos});
+    showScreen('game');
+    sfx.play('start');
+    showToast('COMEÇOU!', 'rgba(0,210,211,0.9)');
+    requestAnimationFrame(gameLoop);
+}
+
+function startGameClient(data) {
+    gameRunning = true;
+    spectating = false;
+    currentState = null;
+    showScreen('game');
+    sfx.play('start');
+    showToast('COMEÇOU!', 'rgba(0,210,211,0.9)');
+    if (!hostLoop) requestAnimationFrame(gameLoop);
+}
+
+// ============================================================
+//  GAME LOOP
+// ============================================================
+let lastTime = 0;
+let hostLoop = false;
+let netTimer = 0;
+let prevCatchSet = new Set();
+let prevCollectCount = {};
+
+function gameLoop(timestamp) {
+    if (!gameRunning) { hostLoop = false; return; }
+    hostLoop = true;
+    const dt = lastTime ? Math.min((timestamp - lastTime) / 1000, 0.05) : 0.016;
+    lastTime = timestamp;
+
+    // Resize canvas
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    if (isHost && game) {
+        allInputs[myId] = getInput();
+        game.update(dt, allInputs);
+        currentState = game.getState();
+
+        // Network sync
+        netTimer += dt * 1000;
+        if (netTimer >= CFG.NET_RATE) {
+            netTimer = 0;
+            net.broadcast({type: 'state', state: currentState});
+        }
+
+        // Check for new catches (for effects)
+        for (const p of currentState.players) {
+            if (p.caught && !prevCatchSet.has(p.id)) {
+                prevCatchSet.add(p.id);
+                burstCatch(p.x, p.y);
+                sfx.play('catch');
+                showToast(`${p.name} foi pego!`, 'rgba(255,71,87,0.9)');
+                camera.shake = 10;
+                if (p.id === myId) spectating = true;
+            }
+        }
+
+        // Detect collectible pickups
+        for (const p of currentState.players) {
+            const prev = prevCollectCount[p.id] || 0;
+            if (p.score > prev) {
+                if (p.id === myId) { sfx.play('collect'); burstCollect(p.x, p.y); }
+                else {
+                    const me = currentState.players.find(q => q.id === myId);
+                    if (me && me.role === 'catcher') sfx.play('hint');
+                }
+            }
+            prevCollectCount[p.id] = p.score;
+        }
+
+        if (currentState.gameOver) {
+            gameRunning = false;
+            const results = buildResults(currentState);
+            net.broadcast({type: 'results', ...results});
+            setTimeout(() => showResults(results), 500);
+        }
+    } else {
+        // Client: send input
+        const now = performance.now();
+        if (now - lastNetSend > 33) {
+            lastNetSend = now;
+            net.send({type: 'input', keys: getInput()});
+        }
+
+        // Detect events from state diffs
+        if (currentState) {
+            for (const p of currentState.players) {
+                if (p.caught && !prevCatchSet.has(p.id)) {
+                    prevCatchSet.add(p.id);
+                    burstCatch(p.x, p.y);
+                    sfx.play('catch');
+                    showToast(`${p.name} foi pego!`, 'rgba(255,71,87,0.9)');
+                    camera.shake = 10;
+                    if (p.id === myId) spectating = true;
+                }
+            }
+            for (const p of currentState.players) {
+                const prev = prevCollectCount[p.id] || 0;
+                if (p.score > prev) {
+                    if (p.id === myId) { sfx.play('collect'); burstCollect(p.x, p.y); }
+                    else {
+                        const me = currentState.players.find(q => q.id === myId);
+                        if (me && me.role === 'catcher') sfx.play('hint');
+                    }
+                }
+                prevCollectCount[p.id] = p.score;
+            }
+            if (currentState.gameOver) {
+                gameRunning = false;
+            }
+        }
+    }
+
+    // Render
+    if (currentState) render(currentState, dt);
+    updateParticles(dt);
+
+    requestAnimationFrame(gameLoop);
+}
+
+// ============================================================
+//  RENDERER
+// ============================================================
+function render(state, dt) {
+    const me = state.players.find(p => p.id === myId);
+    if (!me) return;
+
+    const cw = canvas.width, ch = canvas.height;
+    const target = spectating && !me.caught ? me : (spectating ? (state.players.find(p => !p.caught && p.role === 'invisible') || state.players.find(p => p.role === 'catcher') || me) : me);
+
+    // Camera
+    const tarCX = target.x - cw / 2, tarCY = target.y - ch / 2;
+    camera.x = lerp(camera.x || tarCX, tarCX, 0.08);
+    camera.y = lerp(camera.y || tarCY, tarCY, 0.08);
+    const maxCX = CFG.MAP_W * CFG.TILE - cw, maxCY = CFG.MAP_H * CFG.TILE - ch;
+    camera.x = clamp(camera.x, Math.min(0, maxCX), Math.max(0, maxCX));
+    camera.y = clamp(camera.y, Math.min(0, maxCY), Math.max(0, maxCY));
+
+    if (camera.shake > 0.5) {
+        camera.x += (Math.random() - 0.5) * camera.shake;
+        camera.y += (Math.random() - 0.5) * camera.shake;
+        camera.shake *= 0.88;
+    } else camera.shake = 0;
+
+    // Clear
+    ctx.fillStyle = '#0a0a1a';
+    ctx.fillRect(0, 0, cw, ch);
+
+    ctx.save();
+    ctx.translate(-camera.x, -camera.y);
+
+    const camX = camera.x, camY = camera.y;
+
+    // Floor
+    drawFloor(ctx, camX, camY, cw, ch);
+
+    // Walls
+    drawWalls(ctx, camX, camY, cw, ch, state.map);
+
+    // Collectibles
+    const time = performance.now() / 1000;
+    for (const c of state.collectibles) drawCollectible(ctx, c.x, c.y, time);
+
+    // Hints (visible to catcher)
+    if (me.role === 'catcher') {
+        for (const h of state.hints) drawHintRing(ctx, h);
+    }
+
+    // Players
+    for (const p of state.players) {
+        if (p.caught) continue;
+        if (p.id === myId) continue;
+
+        if (me.role === 'catcher') {
+            if (p.role === 'catcher') {
+                drawCharacter(ctx, p.x, p.y, p.role, p.dir, p.moving, time, 1);
+            } else {
+                // Invisible player: only visible if stealth <= 0 AND line of sight
+                if (p.isVisibleToCatcher) {
+                    const fadeAlpha = p.stealth <= -CFG.VISIBLE_FADE ? 1 : clamp((-p.stealth) / CFG.VISIBLE_FADE, 0.15, 1);
+                    drawCharacter(ctx, p.x, p.y, p.role, p.dir, p.moving, time, fadeAlpha);
+                }
+            }
+        } else {
+            // Invisible players see each other and the catcher
+            drawCharacter(ctx, p.x, p.y, p.role, p.dir, p.moving, time, 1);
+        }
+    }
+
+    // Draw self
+    if (!me.caught) {
+        let selfAlpha = 1;
+        if (me.role === 'invisible' && me.stealth < 3) {
+            selfAlpha = 0.4 + Math.sin(time * 8) * 0.3; // flicker warning
+        }
+        drawCharacter(ctx, me.x, me.y, me.role, me.dir, me.moving, time, selfAlpha);
+        // movement dust
+        if (me.moving && Math.random() < 0.3) trailDust(me.x, me.y, me.role === 'catcher' ? '#ff475744' : '#48dbfb44');
+    }
+
+    // Particles (world space)
+    drawParticles(ctx);
+
+    ctx.restore();
+
+    // Stealth warning indicators for invisible players
+    if (me.role === 'invisible' && !me.caught && me.stealth <= 5 && me.stealth > 0) {
+        const warnAlpha = (1 - me.stealth / 5) * 0.3;
+        ctx.fillStyle = `rgba(255, 71, 87, ${warnAlpha})`;
+        ctx.fillRect(0, 0, cw, ch);
+    }
+
+    // HUD
+    drawHUD(state, me, cw, ch);
+
+    // Minimap
+    drawMinimap(ctx, state, me, cw, ch);
+
+    // Virtual joystick (touch devices)
+    if (joystick.active) drawJoystick(ctx);
+
+    // Direction indicator for hints (catcher sees arrow to hint location)
+    if (me.role === 'catcher' && state.hints.length > 0) {
+        for (const h of state.hints) {
+            const dx = h.x - me.x, dy = h.y - me.y;
+            const angle = Math.atan2(dy, dx);
+            const arrowDist = 60;
+            const ax = cw/2 + Math.cos(angle) * arrowDist;
+            const ay = ch/2 + Math.sin(angle) * arrowDist;
+            const alpha = h.timer / CFG.HINT_DUR;
+            ctx.save();
+            ctx.translate(ax, ay);
+            ctx.rotate(angle);
+            ctx.globalAlpha = alpha * 0.8;
+            ctx.fillStyle = '#00d2d3';
+            ctx.beginPath();
+            ctx.moveTo(12, 0);
+            ctx.lineTo(-5, -6);
+            ctx.lineTo(-5, 6);
+            ctx.closePath();
+            ctx.fill();
+            ctx.globalAlpha = 1;
+            ctx.restore();
+        }
+    }
+
+    // Spectator message
+    let specEl = document.querySelector('.spectator-msg');
+    if (spectating && me.caught) {
+        if (!specEl) {
+            specEl = document.createElement('div');
+            specEl.className = 'spectator-msg';
+            specEl.textContent = '👻 Você foi pego! Assistindo...';
+            document.body.appendChild(specEl);
+        }
+    } else if (specEl) specEl.remove();
+}
+
+function drawHUD(state, me, cw, ch) {
+    // Timer
+    document.getElementById('hudTimer').textContent = '⏰ ' + formatTime(state.timer);
+    if (state.timer < 30) document.getElementById('hudTimer').style.color = '#ff4757';
+    else document.getElementById('hudTimer').style.color = '#fff';
+
+    // Score
+    document.getElementById('hudScore').textContent = '⭐ Coletáveis: ' + me.score;
+
+    // Role
+    const roleEl = document.getElementById('hudRole');
+    if (me.role === 'catcher') {
+        roleEl.className = 'role-tag role-catcher';
+        roleEl.textContent = '👹 PEGADOR';
+    } else {
+        roleEl.className = 'role-tag role-invisible';
+        roleEl.textContent = '👻 INVISÍVEL';
+    }
+
+    // Stealth
+    const stealthEl = document.getElementById('hudStealth');
+    const stealthFill = document.getElementById('stealthFill');
+    if (me.role === 'invisible' && !me.caught) {
+        stealthEl.style.display = 'block';
+        const pct = clamp(me.stealth / CFG.STEALTH_MAX * 100, 0, 100);
+        stealthFill.style.width = pct + '%';
+        if (pct < 25) stealthFill.style.background = '#ff4757';
+        else if (pct < 50) stealthFill.style.background = 'linear-gradient(90deg,#ff4757,#ffa502)';
+        else stealthFill.style.background = 'linear-gradient(90deg,#ffa502,#2ed573)';
+    } else {
+        stealthEl.style.display = 'none';
+    }
+
+    // Phase
+    document.getElementById('hudPhase').textContent = 'Fase ' + (phase + 1) + ' — ' + MAP_NAMES[state.mapIdx];
+}
+
+// ============================================================
+//  RESULTS
+// ============================================================
+function buildResults(state) {
+    const survivors = state.players.filter(p => p.role === 'invisible' && !p.caught);
+    const caught = state.players.filter(p => p.role === 'invisible' && p.caught).sort((a,b) => b.caughtTime - a.caughtTime);
+    const catcher = state.players.find(p => p.role === 'catcher');
+    const ranked = [...survivors.sort((a,b) => b.score - a.score), ...caught];
+    const nextCatcher = state.catchOrder.length > 0 ? state.catchOrder[0] : null;
+    const catcherWon = survivors.length === 0;
+
+    return {
+        type: 'results',
+        ranked: ranked.map(p => ({id: p.id, name: p.name, score: p.score, caught: p.caught, caughtTime: p.caughtTime, role: p.role})),
+        catcher: catcher ? {id: catcher.id, name: catcher.name, score: catcher.score} : null,
+        nextCatcher,
+        catcherWon,
+        phase
+    };
+}
+
+function showResults(data) {
+    gameRunning = false;
+    hostLoop = false;
+    sfx.play('end');
+
+    // Remove spectator msg
+    const specEl = document.querySelector('.spectator-msg');
+    if (specEl) specEl.remove();
+
+    const title = document.getElementById('resultTitle');
+    title.innerHTML = data.catcherWon ? '👹 Pegador <span class="accent">Venceu!</span>' : '👻 Sobreviventes <span class="accent">Venceram!</span>';
+
+    const list = document.getElementById('resultsList');
+    list.innerHTML = '';
+
+    // Catcher
+    if (data.catcher) {
+        const div = document.createElement('div');
+        div.className = 'result-item';
+        div.style.borderLeft = '3px solid #ff4757';
+        div.innerHTML = `<span class="result-rank">👹</span><div class="result-info"><div class="result-name">${escHtml(data.catcher.name)}</div><div class="result-detail">Pegador</div></div><span class="result-score"></span>`;
+        list.appendChild(div);
+    }
+
+    const medals = ['🥇','🥈','🥉','4º','5º','6º'];
+    data.ranked.forEach((p, i) => {
+        const div = document.createElement('div');
+        div.className = 'result-item';
+        div.style.borderLeft = p.caught ? '3px solid #ff4757' : '3px solid #2ed573';
+        const detail = p.caught ? `Pego em ${formatTime(p.caughtTime)}` : 'Sobreviveu!';
+        div.innerHTML = `<span class="result-rank">${medals[i] || ''}</span><div class="result-info"><div class="result-name">${escHtml(p.name)}</div><div class="result-detail">${detail}</div></div><span class="result-score">⭐ ${p.score}</span>`;
+        list.appendChild(div);
+    });
+
+    const nextName = data.nextCatcher ? (data.ranked.find(p => p.id === data.nextCatcher)?.name || data.catcher?.name || '?') : null;
+    const nextMsg = document.getElementById('nextCatcherMsg');
+    if (nextName && data.ranked.length > 1) {
+        nextMsg.textContent = `Próximo Pegador: ${nextName}`;
+        nextMsg.style.display = 'block';
+        catcherId = data.nextCatcher;
+    } else {
+        nextMsg.style.display = 'none';
+    }
+
+    // Update scores
+    if (isHost) {
+        for (const p of data.ranked) {
+            const lp = lobbyPlayers.find(q => q.id === p.id);
+            if (lp) lp.prevScore = p.score;
+        }
+    }
+
+    showScreen('results');
+
+    // Next phase button only for host
+    document.getElementById('btnNextPhase').style.display = isHost ? 'block' : 'none';
+}
+
+document.getElementById('btnNextPhase').onclick = () => {
+    if (!isHost) return;
+    phase++;
+    prevCatchSet.clear();
+    prevCollectCount = {};
+    startGameHost();
+};
+
+document.getElementById('btnBackMenu').onclick = () => {
+    gameRunning = false;
+    hostLoop = false;
+    phase = 0;
+    catcherId = null;
+    prevCatchSet.clear();
+    prevCollectCount = {};
+    net.destroy();
+    net = new Network();
+    lobbyPlayers = [];
+    currentState = null;
+    game = null;
+    const specEl = document.querySelector('.spectator-msg');
+    if (specEl) specEl.remove();
+    showScreen('menu');
+};
+
+// ============================================================
+//  BACKGROUND ANIMATION (Menu)
+// ============================================================
+const bgCanvas = document.createElement('canvas');
+bgCanvas.style.cssText = 'position:fixed;inset:0;z-index:0;pointer-events:none';
+document.body.insertBefore(bgCanvas, document.body.firstChild);
+const bgCtx = bgCanvas.getContext('2d');
+
+const bgParticles = [];
+for (let i = 0; i < 50; i++) {
+    bgParticles.push({
+        x: Math.random() * 2000, y: Math.random() * 1200,
+        size: Math.random() * 2.5 + 0.5,
+        speed: Math.random() * 15 + 5,
+        alpha: Math.random() * 0.4 + 0.1,
+        hue: Math.random() > 0.5 ? 180 : 30
+    });
+}
+
+function bgLoop() {
+    bgCanvas.width = window.innerWidth;
+    bgCanvas.height = window.innerHeight;
+    const w = bgCanvas.width, h = bgCanvas.height;
+
+    // gradient bg
+    const grad = bgCtx.createLinearGradient(0, 0, w, h);
+    grad.addColorStop(0, '#0a0a1a');
+    grad.addColorStop(0.5, '#0f0f2a');
+    grad.addColorStop(1, '#0a0a1a');
+    bgCtx.fillStyle = grad;
+    bgCtx.fillRect(0, 0, w, h);
+
+    for (const p of bgParticles) {
+        p.y -= p.speed * 0.016;
+        if (p.y < -10) { p.y = h + 10; p.x = Math.random() * w; }
+        bgCtx.fillStyle = `hsla(${p.hue}, 80%, 70%, ${p.alpha})`;
+        bgCtx.beginPath(); bgCtx.arc(p.x, p.y, p.size, 0, Math.PI * 2); bgCtx.fill();
+    }
+    requestAnimationFrame(bgLoop);
+}
+bgLoop();
+
+// Initial screen
+showScreen('menu');
+</script>
+</body>
+</html>
